@@ -158,26 +158,48 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="lab9.evalset")
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--check", action="store_true")
-    ap.add_argument("--v2", action="store_true", help="build/check eval set v2 (v1 + adversarial pack)")
+    ap.add_argument("--v2", action="store_true")
     args = ap.parse_args(argv)
+
     if args.v2:
         if args.build:
             n_items, n_labels = build_v2()
-            print(f"wrote {ITEMS_V2} ({n_items} items) and {LABELS_V2} ({n_labels} labels)")
+            print(
+                f"wrote {ITEMS_V2} ({n_items} items) "
+                f"and {LABELS_V2} ({n_labels} labels)"
+            )
+
+        if not ITEMS_V2.is_file() or not LABELS_V2.is_file():
+            print("Missing v2 files. Run --v2 --build first.")
+            return 1
+
         problems = check(ITEMS_V2, LABELS_V2)
-        for p in problems:
-            print("FAIL", p)
-        print(f"eval set v2 {sha12(ITEMS_V2)}: {len(problems)} problem(s)")
+        for problem in problems:
+            print("FAIL", problem)
+
+        print(
+            f"eval set v2 {sha12(ITEMS_V2)}: "
+            f"{len(problems)} problem(s)"
+        )
         return 1 if problems else 0
+
     if args.build:
         n_items, n_labels = build()
-        print(f"wrote {ITEMS} ({n_items} items) and {LABELS} ({n_labels} labels)")
+        print(
+            f"wrote {ITEMS} ({n_items} items) "
+            f"and {LABELS} ({n_labels} labels)"
+        )
         if not args.check:
             return 0
+
     problems = check()
-    for p in problems:
-        print("FAIL", p)
-    print(f"eval set {sha12(ITEMS)}: {len(problems)} problem(s)")
+    for problem in problems:
+        print("FAIL", problem)
+
+    print(
+        f"eval set {sha12(ITEMS)}: "
+        f"{len(problems)} problem(s)"
+    )
     return 1 if problems else 0
 
 

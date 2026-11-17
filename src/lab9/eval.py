@@ -142,16 +142,45 @@ def aggregate(rows: list[dict[str, Any]], metric_ids: list[str], k_values: list[
     return out
 
 
-def per_item(report: dict[str, Any], metric: str, slice_name: str | None = None) -> dict[str, float]:
-    """Mean over seeds for each item -- the unit the paired bootstrap resamples.
-    With slice_name, keep only rows whose item carries that slice tag (M5)."""
+
+def per_item(
+    report: dict[str, Any],
+    metric: str,
+    slice_name: str | None = None,
+) -> dict[str, float]:
+    """Compute per-item values for paired bootstrap."""
     acc: dict[str, list[float]] = {}
-    for r in report["rows"]:
-        if slice_name is not None and slice_name not in (r.get("slices") or []):
+
+    for row in report["rows"]:
+        if slice_name is not None and slice_name not in (row.get("slices") or []):
             continue
-        if r.get(metric) is not None:
-            acc.setdefault(r["item_id"], []).append(float(r[metric]))
-    return {k: sum(v) / len(v) for k, v in acc.items()}
+
+        if metric.startswith(("pass_at_", "pass_hat_")):
+            value = row.get("pass_rate")
+        else:
+            value = row.get(metric)
+
+        if value is not None:
+            acc.setdefault(row["item_id"], []).append(float(value))
+
+    if metric.startswith(("pass_at_", "pass_hat_")):
+        if metric.startswith("pass_at_"):
+            k = int(metric.removeprefix("pass_at_"))
+            fn = stats.pass_at_k
+        else:
+            k = int(metric.removeprefix("pass_hat_"))
+            fn = stats.pass_hat_k
+
+        return {
+            item_id: fn(len(values), int(sum(values)), k)
+            for item_id, values in acc.items()
+            if len(values) >= k
+        }
+
+    return {
+        item_id: sum(values) / len(values)
+        for item_id, values in acc.items()
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
